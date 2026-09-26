@@ -62,16 +62,27 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Ensure Gradle Wrapper
+      - name: Ensure Gradle 9.3.1 Wrapper
         run: |
+          mkdir -p gradle/wrapper
+          cat << 'EOF' > gradle/wrapper/gradle-wrapper.properties
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-9.3.1-bin.zip
+          networkTimeout=10000
+          validateDistributionUrl=true
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          EOF
+
           if [ ! -f ./gradlew ]; then
             echo "Generating Gradle wrapper..."
-            gradle wrapper --gradle-version 8.5
+            gradle wrapper --gradle-version 9.3.1
           fi
           chmod +x ./gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Restore Consistent Keystore
         env:
@@ -85,7 +96,6 @@ jobs:
             echo "Fallback: generating new debug keystore..."
             keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
-          # کپی برای حالتی که گریدل مستقیماً روت پروژه را بخواند
           cp ~/.android/debug.keystore ./debug.keystore || true
 
       - name: Build Debug APK
