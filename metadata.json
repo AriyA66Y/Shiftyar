@@ -1,0 +1,6 @@
+{
+  "name": "شیفت‌یار",
+  "description": "مدیریت هوشمند کشیک‌ها و شیفت‌های پزشکی و پرستاری با تقویم شمسی، یادداشت شیفت و محاسبه خودکار اضافه کار",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

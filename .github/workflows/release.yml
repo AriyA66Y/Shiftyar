@@ -1,0 +1,141 @@
+name: Build and Release Android APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate Dynamic Version 1.0.x
+        id: versioning
+        run: |
+          # Fetch all git tags to inspect existing releases
+          git fetch --tags --force || true
+
+          # Find highest existing tag of format v1.0.X or 1.0.X
+          LATEST_TAG=$(git tag -l "v1.0.*" "1.0.*" | sed 's/^v//' | sort -V | tail -n 1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            # No existing tags, start with run_number
+            PATCH=${{ github.run_number }}
+          else
+            # Extract the current patch number from 1.0.X
+            CURRENT_PATCH=$(echo "$LATEST_TAG" | awk -F. '{print $3}')
+            if [ -n "$CURRENT_PATCH" ] && [ "$CURRENT_PATCH" -eq "$CURRENT_PATCH" ] 2>/dev/null; then
+              PATCH=$((CURRENT_PATCH + 1))
+            else
+              PATCH=${{ github.run_number }}
+            fi
+          fi
+
+          VERSION_NAME="1.0.${PATCH}"
+          VERSION_CODE="${PATCH}"
+          TAG_NAME="v1.0.${PATCH}"
+
+          echo "Calculated version: ${VERSION_NAME} (code: ${VERSION_CODE}, tag: ${TAG_NAME})"
+          echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
+          echo "VERSION_CODE=${VERSION_CODE}" >> $GITHUB_ENV
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
+
+      - name: Get Current Date
+        id: date
+        run: echo "date=$(date -u +'%Y-%m-%d %H:%M UTC')" >> $GITHUB_OUTPUT
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Ensure Gradle Wrapper
+        run: |
+          if [ ! -f ./gradlew ]; then
+            echo "Generating Gradle wrapper..."
+            gradle wrapper --gradle-version 9.3.1
+          fi
+          chmod +x ./gradlew
+
+      - name: Setup Keystores for Signing
+        run: |
+          # Restore debug.keystore if base64 file exists
+          if [ ! -f debug.keystore ] && [ -f debug.keystore.base64 ]; then
+            echo "Restoring debug.keystore from base64..."
+            base64 -d debug.keystore.base64 > debug.keystore || true
+          fi
+
+          # Prepare release keystore if not already configured by custom secret
+          if [ -z "$KEYSTORE_PATH" ] || [ ! -f "$KEYSTORE_PATH" ]; then
+            if [ ! -f my-upload-key.jks ]; then
+              echo "Generating release keystore for CI build..."
+              keytool -genkey -v \
+                -keystore my-upload-key.jks \
+                -alias upload \
+                -storepass android \
+                -keypass android \
+                -keyalg RSA \
+                -keysize 2048 \
+                -validity 10000 \
+                -dname "CN=ShiftYar Release, O=ShiftYar, C=IR"
+            fi
+            echo "STORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/my-upload-key.jks" >> $GITHUB_ENV
+          fi
+
+      - name: Build Release APK
+        run: |
+          ./gradlew assembleRelease \
+            -PversionName="${{ env.VERSION_NAME }}" \
+            -PversionCode="${{ env.VERSION_CODE }}" \
+            --no-daemon
+
+      - name: Prepare APK Asset
+        run: |
+          APK_FILE=$(find app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
+          if [ -z "$APK_FILE" ]; then
+            echo "Error: No release APK found in app/build/outputs/apk/release/"
+            exit 1
+          fi
+          OUTPUT_APK="ShiftYar-v${{ env.VERSION_NAME }}.apk"
+          cp "$APK_FILE" "$OUTPUT_APK"
+          echo "Release APK ready: $OUTPUT_APK"
+
+      - name: Create Git Tag & GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: نسخه ${{ env.TAG_NAME }} (شیفت‌یار)
+          body: |
+            ## 📱 اپلیکیشن شیفت‌یار - مدیریت کشیک و شیفت‌های پزشکی و پرستاری
+            
+            - **نسخه (Version):** `${{ env.VERSION_NAME }}`
+            - **شماره بیلد (Version Code):** `${{ env.VERSION_CODE }}`
+            - **تاریخ انتشار:** `${{ steps.date.outputs.date }}`
+            
+            ### 📥 دانلود و نصب:
+            فایل APK پیوست شده در بخش Assets در پایین همین صفحه را دانلود و روی گوشی اندروید خود نصب کنید:
+            * **`ShiftYar-v${{ env.VERSION_NAME }}.apk`**
+          files: |
+            ShiftYar-v${{ env.VERSION_NAME }}.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

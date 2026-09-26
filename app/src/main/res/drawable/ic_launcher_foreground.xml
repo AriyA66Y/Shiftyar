@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Calendar Body Base -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,32 h44 c3.31,0 6,2.69 6,6 v42 c0,3.31 -2.69,6 -6,6 H32 c-3.31,0 -6,-2.69 -6,-6 V38 c0,-3.31 2.69,-6 6,-6 Z" />
+
+    <!-- Calendar Header Top -->
+    <path
+        android:fillColor="#004D40"
+        android:pathData="M32,32 h44 c3.31,0 6,2.69 6,6 v8 H26 v-8 c0,-3.31 2.69,-6 6,-6 Z" />
+
+    <!-- Calendar Rings / Hooks -->
+    <path
+        android:fillColor="#80DEEA"
+        android:pathData="M36,28 h4 v8 h-4 Z M68,28 h4 v8 h-4 Z" />
+
+    <!-- Medical Red / Teal Cross in Center -->
+    <path
+        android:fillColor="#00897B"
+        android:pathData="M51,52 h6 v18 h-6 Z" />
+    <path
+        android:fillColor="#00897B"
+        android:pathData="M45,58 h18 v6 h-18 Z" />
+
+    <!-- Clock accent / circular shift indicator badge on top right -->
+    <path
+        android:fillColor="#FF8F00"
+        android:pathData="M70,66 a10,10 0 1 0 0.001,0 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M69.2,60.5 h1.6 v6 h3.5 v1.5 h-5.1 Z" />
+</vector>
